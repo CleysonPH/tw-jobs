@@ -2,6 +2,9 @@ package br.com.treinaweb.twjobs.core.services.jwt;
 
 import java.time.Instant;
 import java.util.Date;
+import java.nio.charset.StandardCharsets;
+
+import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Service;
 
@@ -20,37 +23,36 @@ public class JjwtJwtService implements JwtService {
 
     @Override
     public String generateAccessToken(String sub) {
-        var now = Instant.now();
-        var expiration = now.plusSeconds(configProperties.getAccessExpiresIn());
-        var key = Keys.hmacShaKeyFor(configProperties.getAccessSecret().getBytes());
-        return Jwts.builder()
-            .subject(sub)
-            .issuedAt(Date.from(now))
-            .expiration(Date.from(expiration))
-            .signWith(key)
-            .compact();
+        return generateToken(
+            sub, 
+            configProperties.getAccessExpiresIn(), 
+            configProperties.getAccessSecret()
+        );
     }
 
     @Override
     public String getSubFromAccessToken(String token) {
-        var key = Keys.hmacShaKeyFor(configProperties.getAccessSecret().getBytes());
-        try {
-            return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-        } catch (JwtException e) {
-            throw new JwtServiceException(e.getLocalizedMessage());
-        }
+        return getSubFromToken(token, configProperties.getAccessSecret());
     }
 
     @Override
     public String generateRefreshToken(String sub) {
+        return generateToken(
+            sub, 
+            configProperties.getRefreshExpiresIn(), 
+            configProperties.getRefreshSecret()
+        );
+    }
+
+    @Override
+    public String getSubFromRefreshToken(String token) {
+        return getSubFromToken(token, configProperties.getRefreshSecret());
+    }
+
+    private String generateToken(String sub, long expiresIn, String secret) {
         var now = Instant.now();
-        var expiration = now.plusSeconds(configProperties.getRefreshExpiresIn());
-        var key = Keys.hmacShaKeyFor(configProperties.getRefreshSecret().getBytes());
+        var expiration = now.plusSeconds(expiresIn);
+        var key = createKey(secret);
         return Jwts.builder()
             .subject(sub)
             .issuedAt(Date.from(now))
@@ -59,9 +61,8 @@ public class JjwtJwtService implements JwtService {
             .compact();
     }
 
-    @Override
-    public String getSubFromRefreshToken(String token) {
-        var key = Keys.hmacShaKeyFor(configProperties.getRefreshSecret().getBytes());
+    private String getSubFromToken(String token, String secret) {
+        var key = createKey(secret);
         try {
             return Jwts.parser()
                 .verifyWith(key)
@@ -72,6 +73,10 @@ public class JjwtJwtService implements JwtService {
         } catch (JwtException e) {
             throw new JwtServiceException(e.getLocalizedMessage());
         }
+    }
+
+    private SecretKey createKey(String secret) {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
     
 }
