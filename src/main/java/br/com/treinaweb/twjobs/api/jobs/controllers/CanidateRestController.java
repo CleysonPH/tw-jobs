@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.treinaweb.twjobs.api.jobs.assemblers.CandidateAssembler;
 import br.com.treinaweb.twjobs.api.jobs.dtos.CandidateResponse;
 import br.com.treinaweb.twjobs.api.jobs.mappers.CandidateMapper;
 import br.com.treinaweb.twjobs.core.exceptions.JobNotFoundException;
@@ -30,6 +31,7 @@ public class CanidateRestController {
     private final SecurityService securityService;
     private final UserRepository userRepository;
     private final CandidateMapper candidateMapper;
+    private final CandidateAssembler candidateAssembler;
     private final PagedResourcesAssembler<CandidateResponse> pagedResourcesAssembler;
 
     @PostMapping("/apply")
@@ -49,7 +51,7 @@ public class CanidateRestController {
             .orElseThrow(JobNotFoundException::new);
         var candidates = userRepository.findByAppliedJobs(job, pageable)
             .map(candidateMapper::toCandidateResponse);
-        return pagedResourcesAssembler.toModel(candidates);
+        return pagedResourcesAssembler.toModel(candidates, candidateAssembler);
     }
     
     
